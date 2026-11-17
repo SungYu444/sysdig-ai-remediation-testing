@@ -1,0 +1,132 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+parameters:
+  - name: NAME
+    description: Module name
+    required: true
+  - name: COMPONENT
+    description: Component name
+    value: status
+  - name: ZONE
+    description: Deployment zone, e.g. pr-### or prod
+    required: true
+  - name: IMAGE_TAG
+    description: Image tag to use
+    required: true
+  - name: REGISTRY
+    description: Container registry to import from
+    value: ghcr.io
+  - name: ORG_NAME
+    description: Organization name
+    value: bcgov
+  - name: REPLICAS
+    description: Number of pods
+    value: "1"
+  - name: CPU_REQUEST
+    value: "10m"
+  - name: MEMORY_REQUEST
+    value: "64Mi"
+  - name: MEMORY_LIMIT
+    value: "256Mi"
+objects:
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app: ${NAME}-${ZONE}
+      name: ${NAME}-${ZONE}-${COMPONENT}
+    spec:
+      replicas: ${{REPLICAS}}
+      selector:
+        matchLabels:
+          deployment: ${NAME}-${ZONE}-${COMPONENT}
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+          maxSurge: 1
+      template:
+        metadata:
+          labels:
+            app: ${NAME}-${ZONE}
+            deployment: ${NAME}-${ZONE}-${COMPONENT}
+        spec:
+          automountServiceAccountToken: false
+          terminationGracePeriodSeconds: 30
+          containers:
+            - name: ${NAME}
+              image: ${REGISTRY}/${ORG_NAME}/${NAME}/${COMPONENT}:${IMAGE_TAG}
+              imagePullPolicy: Always
+              ports:
+                - name: http
+                  containerPort: 8080
+              env:
+                - name: ZONE
+                  value: ${ZONE}
+              resources:
+                requests:
+                  cpu: ${CPU_REQUEST}
+                  memory: ${MEMORY_REQUEST}
+                limits:
+                  memory: ${MEMORY_LIMIT}
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+                seccompProfile:
+                  type: RuntimeDefault
+              volumeMounts:
+                - name: run
+                  mountPath: /var/run/apache2
+                - name: lock
+                  mountPath: /var/lock/apache2
+                - name: tmp
+                  mountPath: /tmp
+              startupProbe:
+                httpGet:
+                  path: /healthz.php
+                  port: http
+                periodSeconds: 5
+                failureThreshold: 30
+              readinessProbe:
+                httpGet:
+                  path: /healthz.php
+                  port: http
+                periodSeconds: 5
+                failureThreshold: 3
+              livenessProbe:
+                httpGet:
+                  path: /healthz.php
+                  port: http
+                periodSeconds: 10
+                failureThreshold: 3
+          volumes:
+            - name: run
+              emptyDir:
+                medium: Memory
+                sizeLimit: 8Mi
+            - name: lock
+              emptyDir:
+                medium: Memory
+                sizeLimit: 8Mi
+            - name: tmp
+              emptyDir:
+                medium: Memory
+                sizeLimit: 64Mi
+  # ClusterIP only: no Route, so the service is not reachable from outside the cluster
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: ${NAME}-${ZONE}
+      name: ${NAME}-${ZONE}-${COMPONENT}
+    spec:
+      type: ClusterIP
+      ports:
+        - name: http
+          port: 80
+          targetPort: 8080
+      selector:
+        deployment: ${NAME}-${ZONE}-${COMPONENT}

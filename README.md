@@ -12,9 +12,10 @@ Sample Service Platform is a web application running on OpenShift. It is also th
 | --- | --- | --- |
 | Frontend | TypeScript, React, Vite, Caddy with Coraza WAF | [`frontend/`](./frontend) |
 | Backend | TypeScript, NestJS, Prisma | [`backend/`](./backend) |
+| Status service | PHP 8.4, Apache; internal-only (ClusterIP, no Route) | [`status/`](./status) |
 | Database | PostgreSQL, schema managed by Flyway | [`migrations/`](./migrations) |
 | Monitoring | Prometheus metrics, alerts | [`monitoring/`](./monitoring) |
-| Deployment | OpenShift templates | [`common/`](./common), `backend/openshift.deploy.yml`, `frontend/openshift.deploy.yml` |
+| Deployment | OpenShift templates | [`common/`](./common), `backend/`, `frontend/` and `status/` `openshift.deploy.yml` |
 
 ## Local development
 
@@ -55,9 +56,11 @@ Environment setup helpers are in [`scripts/`](./scripts). They preview changes u
 
 See [SECURITY.md](./SECURITY.md) for controls and how to report a vulnerability. Do not open public issues for vulnerabilities.
 
-## Vulnerability remediation test workload
+## Vulnerability remediation test target
 
-[`docs/vulnerable-lab.md`](./docs/vulnerable-lab.md) describes an intentionally outdated, internal-only workload (no Route) used to exercise the remediation workflow in the lab cluster.
+The internal status service ([`status/`](./status)) is pinned to `php:8.4.26-apache`, an older PHP release affected by the public PHP2Shell vulnerabilities (CVE-2026-109618, CVE-2026-109619; fixed in 8.4.27). It is deployed by the normal pipeline to dev, test and prod, and is the intended target for the AI remediation workflow: Sysdig flags the image, and the fix is a tag bump in `status/Dockerfile`.
+
+Containment: ClusterIP service only (no Route), a NetworkPolicy that admits only backend pods and denies all egress, non-root, read-only filesystem, all capabilities dropped, and no service-account token. Do not add a Route for this service.
 
 ## Contributing
 
