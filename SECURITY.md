@@ -17,9 +17,9 @@ If you believe you have found a security vulnerability in this project, please r
 
 ## OWASP ASVS Alignment
 
-Out of the box, this QuickStart repository is hardened to satisfy Level 1 and Level 2 requirements of the **OWASP Application Security Verification Standard (ASVS) v4.0.3**. The table below outlines how this template implements and verifies specific security controls.
+Out of the box, this repository is hardened to satisfy Level 1 and Level 2 requirements of the **OWASP Application Security Verification Standard (ASVS) v4.0.3**. The table below outlines how this application implements and verifies specific security controls.
 
-| ASVS v4.0.3 Section | Category / Control | QuickStart Implementation | Verification / Automation |
+| ASVS v4.0.3 Section | Category / Control | Implementation | Verification / Automation |
 | :--- | :--- | :--- | :--- |
 | **V5.5** | Active Application Defense | Integrates the **Coraza Web Application Firewall (WAF)** running inline with the OWASP Core Rule Set (CRS) inside the frontend reverse proxy. | Verified by build integration in [frontend/Dockerfile](./frontend/Dockerfile) and Caddy configuration in [frontend/Caddyfile](./frontend/Caddyfile). |
 | **V14.2** | Build-Time Security Scans | Scans for container base image vulnerabilities and code weaknesses during development. | Automated [Trivy](https://github.com/aquasecurity/trivy) and [CodeQL](https://codeql.github.com/) scans running in the Analysis workflow on every PR. |
