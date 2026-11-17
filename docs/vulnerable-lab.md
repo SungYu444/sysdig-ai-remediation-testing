@@ -9,14 +9,14 @@ Intentionally outdated workload used to test Sysdig detection and AI-assisted re
 | Manifest | [`common/openshift.vulnerable-lab.yml`](../common/openshift.vulnerable-lab.yml) |
 | Image | `docker.io/library/php:8.4.26-cli` (PHP2Shell: CVE-2026-109618 and CVE-2026-109619, fixed in 8.4.27) |
 | Default namespace | `c9ba43-dev` (parameter `NAMESPACE`) |
-| Exposure | `ClusterIP` Service only, **no Route** |
+| Exposure | None: PHP listens on `127.0.0.1` only, **no Service, no Route** |
 
 The vulnerability is in the public upstream PHP release; working public exploits exist, so containment matters. The repo adds no custom exploit code, credentials or secrets.
 
 ## Safety controls
 
-- No Route or Ingress, so nothing is reachable from the internet.
-- NetworkPolicy: ingress only from pods in the same namespace, all egress denied.
+- No Route, Ingress or Service, and PHP binds to loopback, so no other pod can connect (verified by connecting to the pod IP from a test pod: blocked). The namespace-wide `allow-same-namespace` policies make NetworkPolicy ingress rules ineffective, so loopback binding is the real control.
+- NetworkPolicy denies all egress (verified), and allows ingress only from pods labelled `vuln-lab-client=true`.
 - Read-only root filesystem, non-root, all capabilities dropped, no privilege escalation, `RuntimeDefault` seccomp, no service-account token, small CPU/memory limits.
 
 ## Deploy
