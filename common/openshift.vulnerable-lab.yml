@@ -1,11 +1,22 @@
-# LAB ONLY: intentionally outdated image to generate Sysdig findings for remediation testing.
-# Internal only: ClusterIP service, no Route, ingress limited to the same namespace.
+# LAB ONLY: intentionally vulnerable PHP (PHP2Shell, CVE-2026-109618 / CVE-2026-109619, fixed in 8.4.27)
+# used to generate Sysdig findings for remediation testing. Working public exploits exist.
+# Internal only: ClusterIP service, no Route, ingress limited to the same namespace, all egress denied.
 apiVersion: template.openshift.io/v1
 kind: Template
 parameters:
   - name: NAMESPACE
     value: c9ba43-dev
 objects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: vuln-lab-php-app
+      namespace: ${NAMESPACE}
+      labels:
+        app: vuln-lab
+    data:
+      index.php: |
+        <?php echo "vuln-lab php " . PHP_VERSION . "\n";
   - apiVersion: apps/v1
     kind: Deployment
     metadata:
@@ -28,23 +39,33 @@ objects:
           automountServiceAccountToken: false
           containers:
             - name: web
-              image: docker.io/nginxinc/nginx-unprivileged:1.16.0
+              image: docker.io/library/php:8.4.26-cli
+              command: ["php", "-S", "0.0.0.0:8080", "-t", "/app"]
               ports:
                 - containerPort: 8080
               securityContext:
                 allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
                 capabilities:
                   drop: ["ALL"]
                 runAsNonRoot: true
                 seccompProfile:
                   type: RuntimeDefault
+              volumeMounts:
+                - name: app
+                  mountPath: /app
+                  readOnly: true
               resources:
                 requests:
                   cpu: 10m
-                  memory: 32Mi
+                  memory: 64Mi
                 limits:
-                  cpu: 100m
+                  cpu: 200m
                   memory: 128Mi
+          volumes:
+            - name: app
+              configMap:
+                name: vuln-lab-php-app
   - apiVersion: v1
     kind: Service
     metadata:

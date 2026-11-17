@@ -7,17 +7,17 @@ Intentionally outdated workload used to test Sysdig detection and AI-assisted re
 | Item | Value |
 | --- | --- |
 | Manifest | [`common/openshift.vulnerable-lab.yml`](../common/openshift.vulnerable-lab.yml) |
-| Image | `docker.io/nginxinc/nginx-unprivileged:1.16.0` (old tag with publicly known CVEs) |
+| Image | `docker.io/library/php:8.4.26-cli` (PHP2Shell: CVE-2026-109618 and CVE-2026-109619, fixed in 8.4.27) |
 | Default namespace | `c9ba43-dev` (parameter `NAMESPACE`) |
 | Exposure | `ClusterIP` Service only, **no Route** |
 
-The CVEs come from the public upstream image; the repo adds no custom exploit code, credentials or secrets.
+The vulnerability is in the public upstream PHP release; working public exploits exist, so containment matters. The repo adds no custom exploit code, credentials or secrets.
 
 ## Safety controls
 
 - No Route or Ingress, so nothing is reachable from the internet.
 - NetworkPolicy: ingress only from pods in the same namespace, all egress denied.
-- Non-root, all capabilities dropped, no privilege escalation, `RuntimeDefault` seccomp, no service-account token, small CPU/memory limits.
+- Read-only root filesystem, non-root, all capabilities dropped, no privilege escalation, `RuntimeDefault` seccomp, no service-account token, small CPU/memory limits.
 
 ## Deploy
 
@@ -35,9 +35,9 @@ oc process -f common/openshift.vulnerable-lab.yml -p NAMESPACE=c9ba43-dev | oc d
 
 ## Remediation exercise
 
-1. Wait for Sysdig to scan `nginx-unprivileged:1.16.0`.
+1. Wait for Sysdig to scan `php:8.4.26-cli`.
 2. Use the Sysdig investigate/remediate workflow to find the Critical/High CVEs.
-3. Remediation should bump the image tag in the manifest to a current, patched version via a PR.
+3. Remediation should bump the image tag in the manifest to PHP 8.4.27 or later via a PR.
 
 ## Notes
 
